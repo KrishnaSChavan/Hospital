@@ -15,22 +15,22 @@ public class Bill {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "billId")
+    @Column(name = "bill_id")
     private Long billId;
 
     @ManyToOne
-    @JoinColumn(name = "patientId", nullable = false)
+    @JoinColumn(name = "patient_id", nullable = false)
     @JsonBackReference
     private Patient patient;
 
-    @Column(name = "totalAmount")
+    @Column(name = "total_amount")
     private Double totalAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "paymentStatus")
+    @Column(name = "payment_status")
     private PaymentStatus paymentStatus;
 
-    @Column(name = "billDate")
+    @Column(name = "bill_date")
     @CreationTimestamp
     private Date billDate;
 

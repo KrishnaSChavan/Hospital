@@ -10,7 +10,7 @@ import java.util.List;
 public class Doctor {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "doctorId")
+    @Column(name = "doctor_id")
     private Long doctorId;
 
     @Column(name = "name")
@@ -18,10 +18,10 @@ public class Doctor {
 
     @Column(name = "specialization")
     private String specialization;
-    @Column(name = "contactNumber")
+    @Column(name = "contact_number")
     private String contactNumber;
 
-    @Column(name = "availabilitySchedule" , columnDefinition = "TEXT")
+    @Column(name = "availability_schedule" , columnDefinition = "TEXT")
     private String availabilitySchedule;
 
 //    @OneToMany(mappedBy = "doctor" , cascade=CascadeType.ALL)

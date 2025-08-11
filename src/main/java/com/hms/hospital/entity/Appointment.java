@@ -55,22 +55,22 @@ public class Appointment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "appointmentId") // ✅ Matches SQL column name
+    @Column(name = "appointment_id") // ✅ Matches SQL column name
     private Long appointmentId;
 
     @ManyToOne
-    @JoinColumn(name = "patientId", nullable = false) // ✅ Matches SQL column name
+    @JoinColumn(name = "patient_id", nullable = false) // ✅ Matches SQL column name
     @JsonBackReference
     private Patient patient;
 
     @ManyToOne
-    @JoinColumn(name = "doctorId", nullable = false) // ✅ Matches SQL column name
+    @JoinColumn(name = "doctor_id", nullable = false) // ✅ Matches SQL column name
     private Doctor doctor;
 
-    @Column(name = "appointmentDate")
+    @Column(name = "appointment_date")
     private Date appointmentDate;
 
-    @Column(name = "timeSlot")
+    @Column(name = "time_slot")
     private String timeSlot;
 
     @Enumerated(EnumType.STRING)

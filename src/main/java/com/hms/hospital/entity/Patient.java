@@ -17,7 +17,7 @@ public class Patient {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "patientId")
+    @Column(name = "patient_id")
     private Long patientId;
 
 
@@ -25,19 +25,19 @@ public class Patient {
     private String name;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    @Column(name = "dateOfBirth")
+    @Column(name = "date_of_birth")
     private Date dateOfBirth;
 
     @Column(name = "gender")
     private String gender;
 
-    @Column(name = "contactNumber")
+    @Column(name = "contact_number")
     private String contactNumber;
 
     @Column(name = "address")
     private String address;
 
-    @Column(name = "medicalHistory", columnDefinition = "TEXT")
+    @Column(name = "medical_history", columnDefinition = "TEXT")
     private String medicalHistory;
 //    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL )
 //    private List<Appointment> appointments;
