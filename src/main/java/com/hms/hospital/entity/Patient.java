@@ -1,7 +1,11 @@
 package com.hms.hospital.entity;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
+
+import com.hms.hospital.entity.Appointment;
+import com.hms.hospital.entity.Bill;
 
 import java.util.Date;
 import java.util.List;
@@ -10,14 +14,17 @@ import java.util.List;
 @Entity
 @Table(name = "Patient")
 public class Patient {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "patientId")
     private Long patientId;
 
+
     @Column(name = "name")
     private String name;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Column(name = "dateOfBirth")
     private Date dateOfBirth;
 

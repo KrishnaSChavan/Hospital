@@ -1,0 +1,299 @@
+package com.hms.hospital.entity;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
+import lombok.Data;
+
+import com.hms.hospital.entity.Appointment;
+import com.hms.hospital.entity.Bill;
+
+import java.util.Date;
+import java.util.List;
+
+@Data
+@Entity
+@Table(name = "Patient")
+public class Patient {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "patientId")
+    private Long patientId;
+
+
+    @Column(name = "name")
+    private String name;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @Column(name = "dateOfBirth")
+    private Date dateOfBirth;
+
+    @Column(name = "gender")
+    private String gender;
+
+    @Column(name = "contactNumber")
+    private String contactNumber;
+
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "medicalHistory", columnDefinition = "TEXT")
+    private String medicalHistory;
+//    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL )
+//    private List<Appointment> appointments;
+//    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL)
+//    private List<Bill> bills;
+    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Appointment> appointments;
+
+    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Bill> bills;
+}
+//package com.hms.hospital.entity;
+//
+//import com.fasterxml.jackson.annotation.JsonBackReference;
+//import jakarta.persistence.*;
+//import lombok.Data;
+//import java.util.Date;
+//
+//@Data
+//@Entity
+//@Table(name = "Appointment")
+//public class Appointment {
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    @Column(name = "appointmentId")
+//    private Long appointmentId;
+//
+//    @ManyToOne
+//    @JoinColumn(name = "patientId", nullable = false)
+//    private Patient patient;
+//
+//
+//    @ManyToOne
+//    @JoinColumn(name = "doctorId",nullable = false)
+//    @JsonBackReference
+//    private Doctor doctor;
+//
+//    @Column(name = "appointmentDate")
+//    private Date appointmentDate;
+//
+//    @Column(name = "timeSlot")
+//    private String timeSlot;
+//
+//    @Enumerated(EnumType.STRING)
+//    @Column(name = "status")
+//    private Status status;
+//
+//    public enum Status{
+//        CONFIRMED, CANCELLED
+//    }
+//}
+
+
+package com.hms.hospital.entity;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.util.Date;
+
+@Data
+@Entity
+@Table(name = "Appointment")
+public class Appointment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "appointmentId") // ✅ Matches SQL column name
+    private Long appointmentId;
+
+    @ManyToOne
+    @JoinColumn(name = "patientId", nullable = false) // ✅ Matches SQL column name
+    @JsonBackReference
+    private Patient patient;
+
+    @ManyToOne
+    @JoinColumn(name = "doctorId", nullable = false) // ✅ Matches SQL column name
+    private Doctor doctor;
+
+    @Column(name = "appointmentDate")
+    private Date appointmentDate;
+
+    @Column(name = "timeSlot")
+    private String timeSlot;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private Status status;
+
+    public enum Status {
+        CONFIRMED, CANCELLED
+    }
+
+}
+
+package com.hms.hospital.entity;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
+import lombok.Data;
+import java.util.List;
+
+@Data
+@Entity
+@Table(name = "Doctor")
+public class Doctor {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "doctorId")
+    private Long doctorId;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "specialization")
+    private String specialization;
+    @Column(name = "contactNumber")
+    private String contactNumber;
+
+    @Column(name = "availabilitySchedule" , columnDefinition = "TEXT")
+    private String availabilitySchedule;
+
+//    @OneToMany(mappedBy = "doctor" , cascade=CascadeType.ALL)
+//    private List<Appointment> appointments;
+    @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Appointment> appointments;
+}
+
+package com.hms.hospital.controller;
+
+import com.hms.hospital.entity.Patient;
+import com.hms.hospital.service.PatientService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+
+//@Tag(name = "Patient", description = "Patient management APIs")
+//@RestController
+//@RequestMapping("/patient")
+//public class PatientController {
+//    @Autowired
+//    private PatientService patientService;
+//
+//
+//
+//    @Operation(summary = "Add a new patient")
+//    @PostMapping("/add")
+//    public ResponseEntity<String> addPatient(@RequestBody Patient patient) {
+//        patientService.addPatient(patient);
+//        return ResponseEntity.ok("Patient added successfully");
+//    }
+//
+//}
+
+
+@Tag(name = "Patient", description = "Patient management APIs")
+@RestController
+@RequestMapping("/patient")
+public class PatientController {
+    @Autowired
+    private PatientService patientService;
+    @Operation(summary = "Add a new patient")
+    @PostMapping("/add")
+    public ResponseEntity<String> addPatient(@RequestBody Patient patient) {
+        patientService.addPatient(patient);
+        return ResponseEntity.ok("Patient added successfully");
+    }
+}
+
+
+package com.hms.hospital.entity;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
+import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+
+
+import java.security.PublicKey;
+import java.util.Date;
+
+@Data
+@Entity
+@Table(name = "Bill")
+public class Bill {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "billId")
+    private Long billId;
+
+    @ManyToOne
+    @JoinColumn(name = "patientId", nullable = false)
+    @JsonBackReference
+    private Patient patient;
+
+    @Column(name = "totalAmount")
+    private Double totalAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "paymentStatus")
+    private PaymentStatus paymentStatus;
+
+    @Column(name = "billDate")
+    @CreationTimestamp
+    private Date billDate;
+
+    public enum  PaymentStatus{
+        PAID,UNPAID
+    }
+
+}
+package com.hms.hospital.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.hms.hospital.entity.Patient;
+import com.hms.hospital.repository.PatientRepository;
+
+@Service
+public class PatientService {
+    @Autowired
+    private PatientRepository patientRepository;
+
+    public List<Patient> getAllPatients() {
+        return patientRepository.findAll();
+    }
+
+    public void addPatient(Patient patient) {
+        patientRepository.save(patient);
+    }
+
+    public void removePatient(Patient patient) {
+        patientRepository.delete(patient);
+    }
+
+    public Patient getPatientById(Long id) {
+        return patientRepository.findById(id).orElse(null);
+    }
+
+    public void updatePatient(Patient patient) {
+        patientRepository.save(patient);
+    }
+
+
+
+}
+

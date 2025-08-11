@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 
 import com.hms.hospital.entity.Patient;
 
+import java.util.List;
+
 @Repository
 public interface PatientRepository extends JpaRepository<Patient,Long> {
     // Additional query methods can be defined here if needed

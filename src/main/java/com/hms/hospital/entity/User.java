@@ -9,7 +9,7 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name="userId")
+    @Column(name="user_id")
     private long userId;
     @Column(name = "username",unique = true)
     private String username;
