@@ -1,8 +1,8 @@
 package com.hms.hospital.entity;
 import jakarta.persistence.*;
-import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
 
-@Data
+
 @Entity
 @Table(name="User")
 public class User {
@@ -11,6 +11,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name="user_id")
     private long userId;
+
+
     @Column(name = "username",unique = true)
     private String username;
 
@@ -23,5 +25,37 @@ public class User {
 
     public enum Role {
         ADMIN, PATIENT, DOCTOR
+    }
+
+    public long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(long userId) {
+        this.userId = userId;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

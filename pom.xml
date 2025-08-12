@@ -69,10 +69,10 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-rest</artifactId>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.springframework.boot</groupId>-->
+<!--			<artifactId>spring-boot-starter-data-rest</artifactId>-->
+<!--		</dependency>-->
 		<!-- pom.xml -->
 <!--		<dependency>-->
 <!--			<groupId>org.springdoc</groupId>-->
@@ -84,7 +84,11 @@
 <!--			<artifactId>springfox-boot-starter</artifactId>-->
 <!--			<version>3.0.0</version>-->
 <!--		</dependency>-->
-
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+			 <!-- Or the latest compatible version with your Spring Boot -->
+		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
