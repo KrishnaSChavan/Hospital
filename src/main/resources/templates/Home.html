@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Home</title>
+</head>
+<body>
+<h2>Welcome!</h2>
+<p><strong>Role:</strong> <span th:text="${role}"></span></p>
+<p><strong>JWT Token:</strong></p>
+<textarea rows="5" cols="80" readonly th:text="${token}"></textarea>
+</body>
+</html>
