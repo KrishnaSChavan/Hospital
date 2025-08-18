@@ -7,18 +7,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/users")
 public class UserController {
 
     @Autowired
     private UserService userService;
-
-//    @GetMapping
-//    public String listUsers(Model model) {
-//        model.addAttribute("users", userService.getAllUsers());
-//        return "user-list";
-//    }
 
     @GetMapping("/new")
     public String showCreateForm(Model model) {
@@ -27,8 +23,10 @@ public class UserController {
     }
 
     @PostMapping("/save")
-    public String saveUser(@ModelAttribute("user") User user) {
+    public String saveUser(@ModelAttribute("user") User user,Model model) {
         userService.saveUser(user);
+        List<User> users = userService.getAllUsers(); // Get from DB or hardcoded
+        model.addAttribute("users", users);
         return "user-list";
     }
 
@@ -38,10 +36,24 @@ public class UserController {
         model.addAttribute("user", userService.getUserById(id));
         return "user-form";
     }
+//    @GetMapping("/display")
+//    public String displayUser(@ModelAttribute("user") User user, Model model) {
+//        model.addAttribute("user", user);
+//        return "user-list";
+//    }
+@GetMapping("/display")
+public String displayUserList(Model model) {
+    List<User> users = userService.getAllUsers(); // Get from DB or hardcoded
+    model.addAttribute("users", users);
+    return "user-list";
+}
+
 
     @GetMapping("/delete/{id}")
-    public String deleteUser(@PathVariable Long id) {
+    public String deleteUser(@PathVariable Long id,Model model) {
         userService.deleteUser(id);
-        return "redirect:/users";
+        List<User> users = userService.getAllUsers(); // Get from DB or hardcoded
+        model.addAttribute("users", users);
+        return "user-list";
     }
 }

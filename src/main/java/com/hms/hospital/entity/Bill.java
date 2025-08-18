@@ -8,7 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.security.PublicKey;
 import java.util.Date;
 
-@Data
+
 @Entity
 @Table(name = "Bill")
 public class Bill {
@@ -37,6 +37,7 @@ public class Bill {
     public enum  PaymentStatus{
         PAID,UNPAID
     }
+
 
     public Long getBillId() {
         return billId;

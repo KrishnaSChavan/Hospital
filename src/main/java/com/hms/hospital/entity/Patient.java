@@ -10,7 +10,7 @@ import com.hms.hospital.entity.Bill;
 import java.util.Date;
 import java.util.List;
 
-@Data
+
 @Entity
 @Table(name = "Patient")
 public class Patient {

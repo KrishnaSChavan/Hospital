@@ -15,7 +15,8 @@
         <th>Actions</th>
     </tr>
     </thead>
-    <tbody>
+
+    <h2>User Details</h2>
     <tr th:each="user : ${users}">
         <td th:text="${user.userId}"></td>
         <td th:text="${user.username}"></td>
@@ -25,7 +26,9 @@
             <a th:href="@{'/users/delete/' + ${user.userId}}">Delete</a>
         </td>
     </tr>
-    </tbody>
+
+
+
 </table>
-</body>
+
 </html>

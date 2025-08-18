@@ -2,7 +2,10 @@ package com.hms.hospital.entity;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
+
 import java.util.List;
+
 
 @Entity
 @Table(name = "Doctor")
@@ -33,44 +36,44 @@ public class Doctor {
         return doctorId;
     }
 
-    public void setDoctorId(Long doctorId) {
-        this.doctorId = doctorId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getSpecialization() {
-        return specialization;
-    }
-
-    public void setSpecialization(String specialization) {
-        this.specialization = specialization;
-    }
-
-    public String getContactNumber() {
-        return contactNumber;
-    }
-
-    public void setContactNumber(String contactNumber) {
-        this.contactNumber = contactNumber;
+    public List<Appointment> getAppointments() {
+        return appointments;
     }
 
     public String getAvailabilitySchedule() {
         return availabilitySchedule;
     }
 
-    public void setAvailabilitySchedule(String availabilitySchedule) {
-        this.availabilitySchedule = availabilitySchedule;
+    public String getContactNumber() {
+        return contactNumber;
     }
 
-    public List<Appointment> getAppointments() {
-        return appointments;
+    public String getName() {
+        return name;
+    }
+
+    public String getSpecialization() {
+        return specialization;
+    }
+
+    public void setDoctorId(Long doctorId) {
+        this.doctorId = doctorId;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
+    }
+
+    public void setContactNumber(String contactNumber) {
+        this.contactNumber = contactNumber;
+    }
+
+    public void setAvailabilitySchedule(String availabilitySchedule) {
+        this.availabilitySchedule = availabilitySchedule;
     }
 
     public void setAppointments(List<Appointment> appointments) {

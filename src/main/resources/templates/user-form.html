@@ -14,6 +14,7 @@
     <input type="password" th:field="*{password}" /><br/>
     <label>Role:</label>
     <select th:field="*{role}">
+        <option th:value="ADMIN">ADMIN</option>
         <option th:value="PATIENT">PATIENT</option>
         <option th:value="DOCTOR">DOCTOR</option>
     </select><br/>
