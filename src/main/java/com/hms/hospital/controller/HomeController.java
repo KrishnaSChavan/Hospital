@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/all")
 public class HomeController {
 
-    @GetMapping("/")
+    @GetMapping
     public String home() {
-        return "all/home"; // must have home.html in templates
+        return "all/temp"; // must have home.html in templates
     }
 }
