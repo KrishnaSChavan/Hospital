@@ -38,9 +38,10 @@ public class PatientController {
     @Autowired
     private PatientService patientService;
 
-    @GetMapping("/doctor")
+    @GetMapping("/")
     public String patientList(){
         return "doctor-list";
     }
+
 }
 

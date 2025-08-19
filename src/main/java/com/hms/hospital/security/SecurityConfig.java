@@ -35,15 +35,17 @@ public class SecurityConfig {
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/login", "/register", "/users/save").permitAll() // allow without login
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/doctor/**").hasRole("DOCTOR")
+                        .requestMatchers("/doctors/**").permitAll()
                         .requestMatchers("/patient/**").hasRole("PATIENT")
                         .requestMatchers("/users/**").permitAll()
+                        .requestMatchers("/user/**").permitAll()
+                        .requestMatchers("/all/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .permitAll()
-                        .defaultSuccessUrl("/patient/docto", true)
+                        .defaultSuccessUrl("/patient/", true)
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")

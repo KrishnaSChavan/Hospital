@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Form</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+</head>
+<body>
+<div class="container mt-4">
+    <h2 th:text="${doctor.doctorId == null ? 'Add New Doctor' : 'Edit Doctor'}"></h2>
+
+    <form th:action="@{/doctors/save}" th:object="${doctor}" method="post">
+        <input type="hidden" th:field="*{doctorId}"/>
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" th:field="*{name}" class="form-control" id="name" required/>
+        </div>
+
+        <div class="mb-3">
+            <label for="specialization" class="form-label">Specialization</label>
+            <input type="text" th:field="*{specialization}" class="form-control" id="specialization" required/>
+        </div>
+
+        <div class="mb-3">
+            <label for="contactNumber" class="form-label">Contact Number</label>
+            <input type="text" th:field="*{contactNumber}" class="form-control" id="contactNumber" required/>
+        </div>
+
+        <div class="mb-3">
+            <label for="availabilitySchedule" class="form-label">Availability Schedule</label>
+            <textarea th:field="*{availabilitySchedule}" class="form-control" id="availabilitySchedule" rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success">Save</button>
+        <a th:href="@{/doctors/list}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+</body>
+</html>
