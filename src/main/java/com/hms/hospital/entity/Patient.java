@@ -51,6 +51,16 @@ public class Patient {
     @JsonManagedReference
     private List<Bill> bills;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "user_id")
+    private User user;
+
+//    public Long getUserid(){
+//        return user.getUserId();
+//    }
+//    public void setUserId(Long userId){
+//        this.user_Id = userId;
+//    }
     public Long getPatientId() {
         return patientId;
     }
@@ -121,5 +131,13 @@ public class Patient {
 
     public void setBills(List<Bill> bills) {
         this.bills = bills;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

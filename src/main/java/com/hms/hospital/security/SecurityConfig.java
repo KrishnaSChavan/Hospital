@@ -34,18 +34,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/login", "/register", "/users/save").permitAll() // allow without login
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/doctors/**").permitAll()
+//                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/doctors/**").hasRole("DOCTOR")
                         .requestMatchers("/patient/**").hasRole("PATIENT")
-                        .requestMatchers("/users/**").permitAll()
-                        .requestMatchers("/user/**").permitAll()
-                        .requestMatchers("/all/**").permitAll()
+//                        .requestMatchers("/users/**").permitAll()
+//                        .requestMatchers("/user/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .permitAll()
-                        .defaultSuccessUrl("/patient/", true)
+                        .defaultSuccessUrl("/patient/edit-profile", true)
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")

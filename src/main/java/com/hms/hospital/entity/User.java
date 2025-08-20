@@ -27,6 +27,9 @@ public class User {
         ADMIN, PATIENT, DOCTOR
     }
 
+
+
+
     public long getUserId() {
         return userId;
     }
