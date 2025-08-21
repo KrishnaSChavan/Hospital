@@ -1,10 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Patient Home</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
 </head>
 <body>
+    <div class="container">
+        <h2>Welcome, <span th:text="${patient.name}">Patient Name</span></h2>
 
+        <hr/>
+
+        <!-- Appointment Creation -->
+        <!-- <section>
+            <h3>Create Appointment</h3>
+            <form th:action="@{/appointment/create}" method="post">
+                <label for="doctor">Select Doctor:</label>
+                <select id="doctor" name="doctorId" required>
+                    <option th:each="doctor : ${doctors}" 
+                            th:value="${doctor.id}" 
+                            th:text="${doctor.name}">Doctor Name</option>
+                </select>
+
+                <label for="date">Date:</label>
+                <input type="date" id="date" name="appointmentDate" required />
+
+                <label for="time">Time:</label>
+                <input type="time" id="time" name="appointmentTime" required />
+
+                <button type="submit">Book Appointment</button>
+            </form>
+        </section> -->
+
+        <hr/>
+
+        <!-- Check Doctor List -->
+        <section>
+            <h3>Available Doctors</h3>
+            <ul>
+                <li th:each="doctor : ${doctors}">
+                    <span th:text="${doctor.name}">Doctor Name</span> - 
+                    <span th:text="${doctor.specialization}">Specialization</span>
+                    <span th:text="${doctor.availabilitySchedule}"></span>
+                </li>
+            </ul>
+        </section>
+
+        <hr/>
+
+        <!-- Bill Payment -->
+        <!-- <section>
+            <h3>Bill Payment</h3>
+            <form th:action="@{/billing/pay}" method="post">
+                <label for="billId">Bill ID:</label>
+                <input type="text" id="billId" name="billId" required />
+
+                <label for="amount">Amount:</label>
+                <input type="number" id="amount" name="amount" required />
+
+                <button type="submit">Pay Now</button>
+            </form>
+        </section> -->
+    </div>
 </body>
 </html>

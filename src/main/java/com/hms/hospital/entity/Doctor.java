@@ -32,6 +32,18 @@ public class Doctor {
     @JsonManagedReference
     private List<Appointment> appointments;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "user_id")
+    private User user;
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     public Long getDoctorId() {
         return doctorId;
     }

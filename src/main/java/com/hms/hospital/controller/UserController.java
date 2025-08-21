@@ -1,9 +1,11 @@
 package com.hms.hospital.controller;
 
+import com.hms.hospital.entity.Doctor;
 import com.hms.hospital.entity.Patient;
 import com.hms.hospital.entity.User;
 import com.hms.hospital.repository.PatientRepository;
 import com.hms.hospital.repository.UserRepository;
+import com.hms.hospital.service.DoctorService;
 import com.hms.hospital.service.PatientService;
 import com.hms.hospital.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,9 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private DoctorService doctorService;
+
     @GetMapping("/new")
     public String showCreateForm(Model model) {
         model.addAttribute("user", new User());
@@ -50,8 +55,15 @@ public class UserController {
             patient.setUser(user);
             patientService.addPatient(patient);
         }
+        else if(user.getRole() == User.Role.DOCTOR){
+            Doctor doctor = new Doctor();
+            doctor.setName(user.getUsername());
+            doctor.setUser(user);
+            doctorService.saveDoctor(doctor);
+        }
         return "user-list";
     }
+
 
 
     @GetMapping("/edit/{id}")

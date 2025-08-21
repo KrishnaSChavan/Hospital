@@ -6,6 +6,7 @@ import lombok.Data;
 
 import com.hms.hospital.entity.Appointment;
 import com.hms.hospital.entity.Bill;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.util.Date;
 import java.util.List;
@@ -24,7 +25,10 @@ public class Patient {
     @Column(name = "name")
     private String name;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+
+    @JsonFormat(pattern = "yyyy-MM-dd")     // for JSON serialization/deserialization
+    @Temporal(TemporalType.DATE)
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
     @Column(name = "date_of_birth")
     private Date dateOfBirth;
 

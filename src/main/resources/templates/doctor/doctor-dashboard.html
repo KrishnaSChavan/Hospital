@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard</title>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome, Dr. <span th:text="${doctor.name}">Doctor Name</span></h2>
+        <p>Specialization: <span th:text="${doctor.specialization}">Specialization</span></p>
+        <p>Contact Number: <span th:text="${doctor.contactNumber}">Contact Number</span></p>
+        <a th:href="@{/doctors/edit-profile}">Edit Profile</a>
+    </div>
+</body>
+</html>

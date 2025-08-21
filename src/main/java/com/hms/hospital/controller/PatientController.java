@@ -1,6 +1,8 @@
 package com.hms.hospital.controller;
 
+import com.hms.hospital.entity.Doctor;
 import com.hms.hospital.entity.Patient;
+import com.hms.hospital.service.DoctorService;
 import com.hms.hospital.service.PatientService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.List;
+
 
 @Tag(name = "Patient", description = "Patient management APIs")
 @Controller
@@ -19,9 +23,17 @@ public class PatientController {
     @Autowired
     private PatientService patientService;
 
+    @Autowired
+    private DoctorService doctorService;
+
+
     @GetMapping("/")
-    public String patientList() {
-        return "doctor-list";
+    public String patientList(Model model) {
+        Patient patient = patientService.getLoggedPatient();
+        model.addAttribute("patient", patient);
+        List<Doctor> doctors = doctorService.getDoctorDetails();
+        model.addAttribute("doctors",doctors);
+        return "patient/home";
     }
 
 
@@ -47,5 +59,7 @@ public class PatientController {
 
         return "patient/patient-dashboard";
     }
+
+
 }
 

@@ -1,60 +1,79 @@
 package com.hms.hospital.security;
+//
 
-import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-@Configuration("customSecurityConfig")
+
+
+import lombok.AllArgsConstructor;
+
+@Configuration
+@EnableWebSecurity
+@AllArgsConstructor
 public class SecurityConfig {
 
+
+
     @Autowired
-    private CustomUserDetailsService userDetailsService;
+    private CustomAuthSuccessHandler successHandler;
+
+    @Autowired
+    private final CustomUserDetailsService userService;
+
+    @Autowired
+    public SecurityConfig(CustomUserDetailsService userService) {
+        this.userService = userService;
+    }
+
 
     @Bean
-    public PasswordEncoder customPasswordEncoder() {
+    public AuthenticationProvider authenticationProvider()
+    {
+        DaoAuthenticationProvider provider=new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userService);
+        provider.setPasswordEncoder(passwordEncoder()); // ✅ Add this line
+
+        return provider;
+    }
+    @Bean
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(customPasswordEncoder());
-        return authProvider;
-    }
+
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                        .requestMatchers("/login", "/register", "/users/save").permitAll() // allow without login
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/doctors/**").hasRole("DOCTOR")
-                        .requestMatchers("/patient/**").hasRole("PATIENT")
-//                        .requestMatchers("/users/**").permitAll()
-//                        .requestMatchers("/user/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .formLogin(form -> form
-                        .loginPage("/login")
-                        .permitAll()
-                        .defaultSuccessUrl("/patient/edit-profile", true)
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login?logout") // redirect to login page with ?logout flag
-                        .permitAll()
-                );
-
-        return http.build();
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers("/", "/all/**", "/users/**", "/css/**", "/js/**").permitAll();
+                    auth.requestMatchers("/admin/**").hasRole("ADMIN");
+                    auth.requestMatchers("/patient/**").hasRole("PATIENT");
+                    auth.requestMatchers("/doctors/**").hasRole("DOCTOR");
+                    auth.anyRequest().authenticated();
+                })
+                .formLogin(form -> {
+                    form.loginPage("/login").permitAll();
+                    form.successHandler(successHandler);
+                })
+                .logout(logout -> {
+                    logout.logoutUrl("/logout")
+                            .logoutSuccessUrl("/all/")
+                            .permitAll();
+                })
+                .build();
     }
 
 }

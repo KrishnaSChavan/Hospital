@@ -6,10 +6,7 @@ import com.hms.hospital.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/doctors")
@@ -33,5 +30,27 @@ public class DoctorController {
         doctorService.saveDoctor(doctor);
         return "redirect:/doctor/home";
     }
+    @GetMapping("/edit-profile")
+    public String editDoctorProfile(Model model){
+        Doctor doctor = doctorService.getLoggedDoctor();
+        model.addAttribute("doctor",doctor);
+        return "doctor/edit-doctor-form";
+    }
+    @PostMapping("/profile-update")
+    public String updateDoctorProfile(@ModelAttribute Doctor doctor, Model model){
+        Doctor existingDoctor = doctorService.getLoggedDoctor();
+
+        existingDoctor.setName(doctor.getName());
+        existingDoctor.setSpecialization(doctor.getSpecialization());
+        existingDoctor.setContactNumber(doctor.getContactNumber());
+        
+
+        doctorService.updateDoctor(existingDoctor);
+        model.addAttribute("message", "Profile updated successfully");
+
+        return "doctor/doctor-dashboard";
+    }
+
+
 
 }
