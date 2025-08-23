@@ -42,7 +42,7 @@ public class SecurityConfig {
     {
         DaoAuthenticationProvider provider=new DaoAuthenticationProvider();
         provider.setUserDetailsService(userService);
-        provider.setPasswordEncoder(passwordEncoder()); // ✅ Add this line
+        provider.setPasswordEncoder(passwordEncoder());
 
         return provider;
     }

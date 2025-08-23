@@ -16,13 +16,16 @@ public class DoctorController {
     DoctorService doctorService;
 
     @GetMapping("/")
-    public String getDoctorList(){
-        return "doctor-list";
+    public String getDoctorList(Model model){
+        Doctor doctor = doctorService.getLoggedDoctor();
+        model.addAttribute("doctor",doctor);
+        return "doctor/doctor-dashboard";
     }
 
     @GetMapping("/new")
     public String doctorRegisterForm(Model model){
-        model.addAttribute("doctor",new Doctor());
+        Doctor doctor = doctorService.getLoggedDoctor();
+        model.addAttribute("doctor",doctor);
         return "doctor/form";
     }
     @PostMapping("/save")
@@ -43,7 +46,7 @@ public class DoctorController {
         existingDoctor.setName(doctor.getName());
         existingDoctor.setSpecialization(doctor.getSpecialization());
         existingDoctor.setContactNumber(doctor.getContactNumber());
-        
+        existingDoctor.setAvailabilitySchedule(doctor.getAvailabilitySchedule());
 
         doctorService.updateDoctor(existingDoctor);
         model.addAttribute("message", "Profile updated successfully");

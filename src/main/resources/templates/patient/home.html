@@ -32,19 +32,47 @@
             </form>
         </section> -->
 
-        <hr/>
 
-        <!-- Check Doctor List -->
+<!--        <section>-->
+<!--            <h3>Available Doctors</h3>-->
+<!--            <table border="1" cellpadding="8" cellspacing="0">-->
+<!--                <thead>-->
+<!--                <tr>-->
+<!--                    <th>Name</th>-->
+<!--                    <th>Specialization</th>-->
+<!--                    <th>Availability Schedule</th>-->
+<!--                </tr>-->
+<!--                </thead>-->
+<!--                <tbody>-->
+<!--                <tr th:each="doctor : ${doctors}">-->
+<!--                    <td>Dr. <span th:text="${doctor.name}">Doctor Name</span></td>-->
+<!--                    <td th:text="${doctor.specialization}">Specialization</td>-->
+<!--                    <td>-->
+<!--                        <pre th:text="${doctor.availabilitySchedule}">Schedule</pre>-->
+<!--                    </td>-->
+<!--                </tr>-->
+<!--                </tbody>-->
+<!--            </table>-->
+<!--        </section>-->
         <section>
             <h3>Available Doctors</h3>
-            <ul>
-                <li th:each="doctor : ${doctors}">
-                    <span th:text="${doctor.name}">Doctor Name</span> - 
-                    <span th:text="${doctor.specialization}">Specialization</span>
-                    <span th:text="${doctor.availabilitySchedule}"></span>
-                </li>
-            </ul>
+            <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <div th:each="doctor, iterStat : ${doctors}" th:if="${iterStat.index < 5}"
+                     style="border: 1px solid #ccc; padding: 15px; width: 200px; border-radius: 8px;">
+                    <strong>Dr. <span th:text="${doctor.name}">Name</span></strong><br/>
+                    <span th:text="${doctor.specialization}">Specialization</span><br/>
+                    <pre th:text="${doctor.availabilitySchedule}">Schedule</pre>
+                </div>
+
+                <!-- "Many More..." Box -->
+                <div th:if="${#lists.size(doctors) > 5}"
+                     style="border: 1px dashed #999; padding: 15px; width: 200px; border-radius: 8px; text-align: center;">
+                    <strong>Many More...</strong><br/>
+<!--                    <a href="/doctors/all">View All Doctors</a>-->
+                </div>
+            </div>
         </section>
+
 
         <hr/>
 
