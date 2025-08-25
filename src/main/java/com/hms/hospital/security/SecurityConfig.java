@@ -59,9 +59,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/all/**", "/users/**", "/css/**", "/js/**").permitAll();
-                    auth.requestMatchers("/admin/**").hasRole("ADMIN");
-                    auth.requestMatchers("/patient/**").hasRole("PATIENT");
-                    auth.requestMatchers("/doctors/**").hasRole("DOCTOR");
+                    auth.requestMatchers("/admin/**","/appointments/**").hasRole("ADMIN");
+                    auth.requestMatchers("/patient/**","/appointments/**").hasRole("PATIENT");
+                    auth.requestMatchers("/doctors/**","/appointments/**").hasRole("DOCTOR");
                     auth.anyRequest().authenticated();
                 })
                 .formLogin(form -> {

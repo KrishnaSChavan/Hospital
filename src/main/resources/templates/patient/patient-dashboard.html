@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <title>Patient Dashboard</title>
 </head>
+
 <body>
-<h2>Welcome, <span th:text="${patient.name}">Patient</span></h2>
+    <h2>Welcome, <span th:text="${patient.name}">Patient</span></h2>
 
-<p><strong>Date of Birth:</strong> <span th:text="${patient.dateOfBirth}"></span></p>
-<p><strong>Gender:</strong> <span th:text="${patient.gender}"></span></p>
-<p><strong>Address:</strong> <span th:text="${patient.address}"></span></p>
-<p><strong>Contact Number:</strong> <span th:text="${patient.contactNumber}"></span></p>
+    <p><strong>Date of Birth:</strong> <span th:text="${patient.dateOfBirth}"></span></p>
+    <p><strong>Gender:</strong> <span th:text="${patient.gender}"></span></p>
+    <p><strong>Address:</strong> <span th:text="${patient.address}"></span></p>
+    <p><strong>Contact Number:</strong> <span th:text="${patient.contactNumber}"></span></p>
 
-<a href="/patient/edit-profile">Edit Profile</a>
+    <a href="/patient/edit-profile">Edit Profile</a>
 
-<p th:if="${message}" style="color: green;"><strong th:text="${message}"></strong></p>
+    <p th:if="${message}" style="color: green;"><strong th:text="${message}"></strong></p>
 </body>
+
 </html>
