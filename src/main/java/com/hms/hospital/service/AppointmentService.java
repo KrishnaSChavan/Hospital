@@ -2,6 +2,7 @@ package com.hms.hospital.service;
 
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.hms.hospital.entity.Doctor;
 import com.hms.hospital.entity.Patient;
@@ -45,25 +46,25 @@ public class AppointmentService {
         return appointmentRepository.findByDoctor_DoctorId(doctorId);
     }
 
-    public List<String> getAvailableSlots(Doctor doctor, Date date) {
-        List<Appointment> bookedAppointments = appointmentRepository.findByDoctorDoctorIdAndAppointmentDate(doctor.getDoctorId(), date);
-        Set<String> bookedSlots = new HashSet<>();
-        for (Appointment a : bookedAppointments) {
-            bookedSlots.add(a.getTimeSlot());
-        }
-
-        String availability = doctor.getAvailabilitySchedule(); // e.g., "2025-08-23 : 10:30 - 18:59"
-        List<String> allSlots = TimeSlot.generateTimeSlots(availability);
-        List<String> availableSlots = new ArrayList<>();
-
-        for (String slot : allSlots) {
-            if (!bookedSlots.contains(slot)) {
-                availableSlots.add(slot);
-            }
-        }
-
-        return availableSlots;
-    }
+//    public List<String> getAvailableSlots(Doctor doctor, Date date) {
+//        List<Appointment> bookedAppointments = appointmentRepository.findByDoctorDoctorIdAndAppointmentDate(doctor.getDoctorId(), date);
+//        Set<String> bookedSlots = new HashSet<>();
+//        for (Appointment a : bookedAppointments) {
+//            bookedSlots.add(a.getTimeSlot());
+//        }
+//
+//        String availability = doctor.getAvailabilitySchedule(); // e.g., "2025-08-23 : 10:30 - 18:59"
+//        List<String> allSlots = TimeSlot.generateTimeSlots(availability);
+//        List<String> availableSlots = new ArrayList<>();
+//
+//        for (String slot : allSlots) {
+//            if (!bookedSlots.contains(slot)) {
+//                availableSlots.add(slot);
+//            }
+//        }
+//
+//        return availableSlots;
+//    }
 
     public void bookAppointment(Patient patient, Doctor doctor, Date date, String timeSlot) {
         Appointment appointment = new Appointment();
@@ -75,5 +76,24 @@ public class AppointmentService {
         appointmentRepository.save(appointment);
     }
 
+    public List<String> getAvailableSlots(Doctor doctor, Date date) {
+        String schedule = doctor.getAvailabilitySchedule();
 
+        // Step 1: Generate all possible time slots from the doctor's schedule
+        List<String> allPossibleSlots = TimeSlot.generateTimeSlots(schedule);
+
+        // Step 2: Fetch all booked appointments for the doctor on the specified date
+        List<Appointment> bookedAppointments = appointmentRepository.findByDoctorAndAppointmentDate(doctor, date);
+
+        // Step 3: Extract the booked time slots
+        List<String> bookedTimeSlots = bookedAppointments.stream()
+                .map(Appointment::getTimeSlot) // Use a method reference for cleaner code
+                .collect(Collectors.toList());
+
+        // Step 4: Filter out the booked slots
+        List<String> availableSlots = new ArrayList<>(allPossibleSlots);
+        availableSlots.removeAll(bookedTimeSlots);
+
+        return availableSlots;
+    }
 }

@@ -70,7 +70,7 @@ public class AppointmentController {
         Date date = new SimpleDateFormat("yyyy-MM-dd").parse(dateStr);
 
         appointmentService.bookAppointment(patient, doctor, date, timeSlot);
-        return "redirect:/appointments/";
+        return "redirect:/appointment/";
     }
 
 

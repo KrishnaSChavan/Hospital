@@ -1,20 +1,31 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
+  <meta charset="UTF-8">
   <title>Book Appointment</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-<h2>Book Appointment with Dr. <span th:text="${doctor.name}"></span></h2>
-<form th:action="@{/appointments/confirm}" method="post">
-  <input type="hidden" name="doctorId" th:value="${doctor.doctorId}" />
-  <input type="hidden" name="dateStr" th:value="${date}" />
+<div th:replace="doctor/doctor_navbar :: body"></div>
+<div class="container mt-5">
+  <h2 class="mb-4">Book Appointment with Dr. <span th:text="${doctor.name}"></span></h2>
 
-  <label>Select Time Slot:</label>
-  <select name="timeSlot">
-    <option th:each="slot : ${availableSlots}" th:value="${slot}" th:text="${slot}"></option>
-  </select>
+  <form th:action="@{/appointment/confirm}" method="post">
+    <input type="hidden" name="doctorId" th:value="${doctor.doctorId}" />
+    <input type="hidden" name="dateStr" th:value="${date}" />
 
-  <button type="submit">Confirm Appointment</button>
-</form>
+    <div class="form-group">
+      <label for="timeSlot">Select an available time slot for <strong th:text="${date}"></strong>:</label>
+      <select name="timeSlot" id="timeSlot" class="form-control" th:if="${not #lists.isEmpty(availableSlots)}">
+        <option th:each="slot : ${availableSlots}" th:value="${slot}" th:text="${slot}"></option>
+      </select>
+      <div th:if="${#lists.isEmpty(availableSlots)}" class="alert alert-warning mt-3">
+        No available time slots for today. Please check back later.
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Confirm Appointment</button>
+  </form>
+</div>
 </body>
 </html>
