@@ -1,8 +1,11 @@
 package com.hms.hospital.service;
 
 
-import java.util.List;
+import java.util.*;
 
+import com.hms.hospital.entity.Doctor;
+import com.hms.hospital.entity.Patient;
+import com.hms.hospital.util.TimeSlot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -41,5 +44,36 @@ public class AppointmentService {
     public List<Appointment> getAppointmentsByDoctorId(Long doctorId){
         return appointmentRepository.findByDoctor_DoctorId(doctorId);
     }
+
+    public List<String> getAvailableSlots(Doctor doctor, Date date) {
+        List<Appointment> bookedAppointments = appointmentRepository.findByDoctorDoctorIdAndAppointmentDate(doctor.getDoctorId(), date);
+        Set<String> bookedSlots = new HashSet<>();
+        for (Appointment a : bookedAppointments) {
+            bookedSlots.add(a.getTimeSlot());
+        }
+
+        String availability = doctor.getAvailabilitySchedule(); // e.g., "2025-08-23 : 10:30 - 18:59"
+        List<String> allSlots = TimeSlot.generateTimeSlots(availability);
+        List<String> availableSlots = new ArrayList<>();
+
+        for (String slot : allSlots) {
+            if (!bookedSlots.contains(slot)) {
+                availableSlots.add(slot);
+            }
+        }
+
+        return availableSlots;
+    }
+
+    public void bookAppointment(Patient patient, Doctor doctor, Date date, String timeSlot) {
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setDoctor(doctor);
+        appointment.setAppointmentDate(date);
+        appointment.setTimeSlot(timeSlot);
+        appointment.setStatus(Appointment.Status.CONFIRMED);
+        appointmentRepository.save(appointment);
+    }
+
 
 }

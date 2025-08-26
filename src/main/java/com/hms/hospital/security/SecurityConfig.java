@@ -58,10 +58,10 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/all/**", "/users/**", "/css/**", "/js/**").permitAll();
-                    auth.requestMatchers("/admin/**","/appointments/**").hasRole("ADMIN");
-                    auth.requestMatchers("/patient/**","/appointments/**").hasRole("PATIENT");
-                    auth.requestMatchers("/doctors/**","/appointments/**").hasRole("DOCTOR");
+                    auth.requestMatchers("/", "/all/**", "/users/**", "/css/**", "/js/**","/appointment/**").permitAll();
+                    auth.requestMatchers("/admin/**","/appointment/**").hasRole("ADMIN");
+                    auth.requestMatchers("/patient/**","/appointment/**").hasRole("PATIENT");
+                    auth.requestMatchers("/doctors/**","/appointment/**").hasRole("DOCTOR");
                     auth.anyRequest().authenticated();
                 })
                 .formLogin(form -> {

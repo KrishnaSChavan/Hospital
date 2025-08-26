@@ -11,4 +11,5 @@ import org.springframework.stereotype.Repository;
 public interface AppointmentRepository extends JpaRepository<Appointment,Long> {
     List<Appointment> findByPatient_PatientId(Long patientId);
     List<Appointment> findByDoctor_DoctorId(Long doctorId);
+    List<Appointment> findByDoctorDoctorIdAndAppointmentDate(Long doctorId, java.util.Date date);
 }

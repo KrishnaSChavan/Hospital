@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>My Appointments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>My Appointments</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Doctor Name</th>
+            <th>Specialization</th>
+            <th>Date</th>
+            <th>Time Slot</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="appt : ${appointment}">
+            <td th:text="${appt.doctor.name}">Dr. Name</td>
+            <td th:text="${appt.doctor.specialization}">Specialization</td>
+            <td th:text="${#dates.format(appt.appointmentDate, 'yyyy-MM-dd')}">2025-08-26</td>
+            <td th:text="${appt.timeSlot}">10:30 - 11:00</td>
+            <td th:text="${appt.status}">CONFIRMED</td>
+        </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

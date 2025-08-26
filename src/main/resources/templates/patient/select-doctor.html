@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Select a Doctor</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .doctor-card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .doctor-card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="mb-4 text-center">Select a Doctor to Book an Appointment</h2>
+    <div class="row">
+        <div class="col-md-6 col-lg-4" th:each="doctor : ${doctors}">
+            <div class="card doctor-card">
+                <div class="card-body">
+                    <h5 class="card-title" th:text="${doctor.name}">Dr. John Smith</h5>
+                    <h6 class="card-subtitle mb-2 text-muted" th:text="${doctor.specialization}">Cardiologist</h6>
+                    <p class="card-text">
+                        <strong>Contact:</strong> <span th:text="${doctor.contactNumber}">123-456-7890</span><br>
+                    </p>
+                    <a th:href="@{/appointment/book/{doctorId}(doctorId=${doctor.doctorId})}" class="btn btn-primary btn-block">Book Appointment</a>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(doctors)}" class="col-12">
+            <div class="alert alert-info text-center" role="alert">
+                No doctors are currently available. Please check back later.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
