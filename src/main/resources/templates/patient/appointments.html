@@ -37,6 +37,7 @@
             <th>Date</th>
             <th>Time Slot</th>
             <th>Status</th>
+            <th>Action</th>
         </tr>
     </thead>
     <tbody>
@@ -46,6 +47,16 @@
             <td th:text="${#dates.format(appt.appointmentDate, 'yyyy-MM-dd')}">2025-08-26</td>
             <td th:text="${appt.timeSlot}">10:30 - 11:00</td>
             <td th:text="${appt.status}">CONFIRMED</td>
+            <td>
+<!--                <form th:action="@{/appointment/delete/{id}(id=${appt.appointmentId})}" method="post">-->
+<!--                    <button type="submit" class="delete-btn">Cancel</button>-->
+<!--                </form>-->
+
+                <form th:action="@{/appointment/cancel/{id}(id=${appt.appointmentId})}" method="post">
+                    <button type="submit" class="delete-btn">Cancel</button>
+                </form>
+
+            </td>
         </tr>
     </tbody>
 </table>

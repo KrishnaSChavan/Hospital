@@ -38,33 +38,21 @@ public class AppointmentService {
         appointmentRepository.save(appointment);
     }
 
-    public List<Appointment> getAppointmentsByPatientId(Long patientId){
-        return appointmentRepository.findByPatient_PatientId(patientId);
-    }
+//    public List<Appointment> getAppointmentsByPatientId(Long patientId){
+//        return appointmentRepository.findByPatient_PatientId(patientId);
+//    }
+public List<Appointment> getAppointmentsByPatientId(Long patientId) {
+    List<Appointment> appointments = appointmentRepository.findByPatient_PatientId(patientId);
 
+    appointments.sort(Comparator
+            .comparing(Appointment::getAppointmentDate).reversed()
+            .thenComparing(Appointment::getTimeSlot));
+
+    return appointments;
+}
     public List<Appointment> getAppointmentsByDoctorId(Long doctorId){
         return appointmentRepository.findByDoctor_DoctorId(doctorId);
     }
-
-//    public List<String> getAvailableSlots(Doctor doctor, Date date) {
-//        List<Appointment> bookedAppointments = appointmentRepository.findByDoctorDoctorIdAndAppointmentDate(doctor.getDoctorId(), date);
-//        Set<String> bookedSlots = new HashSet<>();
-//        for (Appointment a : bookedAppointments) {
-//            bookedSlots.add(a.getTimeSlot());
-//        }
-//
-//        String availability = doctor.getAvailabilitySchedule(); // e.g., "2025-08-23 : 10:30 - 18:59"
-//        List<String> allSlots = TimeSlot.generateTimeSlots(availability);
-//        List<String> availableSlots = new ArrayList<>();
-//
-//        for (String slot : allSlots) {
-//            if (!bookedSlots.contains(slot)) {
-//                availableSlots.add(slot);
-//            }
-//        }
-//
-//        return availableSlots;
-//    }
 
     public void bookAppointment(Patient patient, Doctor doctor, Date date, String timeSlot) {
         Appointment appointment = new Appointment();
@@ -96,4 +84,11 @@ public class AppointmentService {
 
         return availableSlots;
     }
+    public void cancelAppointment(Long id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid appointment ID: " + id));
+        appointment.setStatus(Appointment.Status.CANCELLED);
+        appointmentRepository.save(appointment);
+    }
+
 }

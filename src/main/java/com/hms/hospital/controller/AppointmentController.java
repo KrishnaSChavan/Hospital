@@ -49,17 +49,46 @@ public class AppointmentController {
         return "patient/select-doctor"; // A new view to list doctors
     }
 
-    @GetMapping("/book/{doctorId}")
-    public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
-        Doctor doctor = doctorService.getDoctorById(doctorId).orElseThrow(() -> new RuntimeException("Doctor not found"));
-        Date date = new Date(); // today's date or selected date
-        List<String> availableSlots = appointmentService.getAvailableSlots(doctor, date);
+//    @GetMapping("/book/{doctorId}")
+//    public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
+//        Doctor doctor = doctorService.getDoctorById(doctorId).orElseThrow(() -> new RuntimeException("Doctor not found"));
+//        Date date = new Date(); // today's date or selected date
+//        List<String> availableSlots = appointmentService.getAvailableSlots(doctor, date);
+//
+//        model.addAttribute("doctor", doctor);
+//        model.addAttribute("availableSlots", availableSlots);
+//        model.addAttribute("date", new SimpleDateFormat("yyyy-MM-dd").format(date));
+//        return "patient/book-appointment";
+//    }
+@GetMapping("/book/{doctorId}")
+public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
+    Doctor doctor = doctorService.getDoctorById(doctorId)
+            .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
+    Patient patient = patientService.getLoggedPatient();
+    Date date = new Date(); // today's date or selected date
+
+    // Check if a confirmed appointment already exists
+    List<Appointment> existingAppointments = appointmentService.getAppointmentsByPatientId(patient.getPatientId());
+    boolean hasConfirmed = existingAppointments.stream()
+            .anyMatch(appt -> appt.getDoctor().getDoctorId().equals(doctorId)
+                    && appt.getAppointmentDate().equals(date)
+                    && appt.getStatus() == Appointment.Status.CONFIRMED);
+
+    if (hasConfirmed) {
         model.addAttribute("doctor", doctor);
-        model.addAttribute("availableSlots", availableSlots);
         model.addAttribute("date", new SimpleDateFormat("yyyy-MM-dd").format(date));
+        model.addAttribute("alreadyBooked", true);
         return "patient/book-appointment";
     }
+
+    List<String> availableSlots = appointmentService.getAvailableSlots(doctor, date);
+    model.addAttribute("doctor", doctor);
+    model.addAttribute("availableSlots", availableSlots);
+    model.addAttribute("date", new SimpleDateFormat("yyyy-MM-dd").format(date));
+    return "patient/book-appointment";
+}
+
 
     @PostMapping("/confirm")
     public String confirmAppointment(@RequestParam Long doctorId,
@@ -74,8 +103,23 @@ public class AppointmentController {
     }
 
 
-    @PostMapping
-    public String addAppointment(){
-        return "";
+    @DeleteMapping("/{id}")
+    public String removeAppointment(@PathVariable Long id, Model model){
+        appointmentService.deleteAppointment(id);
+        Patient patient = patientService.getLoggedPatient();
+        List<Appointment> appointment = appointmentService.getAppointmentsByPatientId(patient.getPatientId());
+        model.addAttribute("appointment",appointment);
+        return "patient/appointments";
     }
+    @PostMapping("/delete/{id}")
+    public String removeAppointment(@PathVariable Long id){
+        appointmentService.deleteAppointment(id);
+        return "redirect:/appointment/";
+    }
+    @PostMapping("/cancel/{id}")
+    public String cancelAppointment(@PathVariable Long id) {
+        appointmentService.cancelAppointment(id);
+        return "redirect:/appointment/";
+    }
+
 }
