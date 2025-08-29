@@ -49,26 +49,16 @@ public class AppointmentController {
         return "patient/select-doctor"; // A new view to list doctors
     }
 
-//    @GetMapping("/book/{doctorId}")
-//    public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
-//        Doctor doctor = doctorService.getDoctorById(doctorId).orElseThrow(() -> new RuntimeException("Doctor not found"));
-//        Date date = new Date(); // today's date or selected date
-//        List<String> availableSlots = appointmentService.getAvailableSlots(doctor, date);
-//
-//        model.addAttribute("doctor", doctor);
-//        model.addAttribute("availableSlots", availableSlots);
-//        model.addAttribute("date", new SimpleDateFormat("yyyy-MM-dd").format(date));
-//        return "patient/book-appointment";
-//    }
+
 @GetMapping("/book/{doctorId}")
 public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
     Doctor doctor = doctorService.getDoctorById(doctorId)
             .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
     Patient patient = patientService.getLoggedPatient();
-    Date date = new Date(); // today's date or selected date
+    Date date = new Date();
 
-    // Check if a confirmed appointment already exists
+
     List<Appointment> existingAppointments = appointmentService.getAppointmentsByPatientId(patient.getPatientId());
     boolean hasConfirmed = existingAppointments.stream()
             .anyMatch(appt -> appt.getDoctor().getDoctorId().equals(doctorId)
@@ -99,7 +89,7 @@ public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
         Date date = new SimpleDateFormat("yyyy-MM-dd").parse(dateStr);
 
         appointmentService.bookAppointment(patient, doctor, date, timeSlot);
-        return "redirect:/appointment/";
+        return "redirect:/patient/";
     }
 
 
@@ -114,12 +104,22 @@ public String showAvailableSlots(@PathVariable Long doctorId, Model model) {
     @PostMapping("/delete/{id}")
     public String removeAppointment(@PathVariable Long id){
         appointmentService.deleteAppointment(id);
-        return "redirect:/appointment/";
+        return "redirect:/patient/";
     }
     @PostMapping("/cancel/{id}")
     public String cancelAppointment(@PathVariable Long id) {
         appointmentService.cancelAppointment(id);
-        return "redirect:/appointment/";
+        return "redirect:/patient/";
+    }
+
+    @GetMapping("/patientList")
+    public String getPatientList(Model model){
+        Doctor doctor = doctorService.getLoggedDoctor();
+        List<Appointment> appointment = appointmentService.getAppointmentsByDoctorId(doctor.getDoctorId());
+        model.addAttribute("appointment",appointment);
+        model.addAttribute("doctor",doctor);
+        return "doctor/doctor-dashboard";
+
     }
 
 }

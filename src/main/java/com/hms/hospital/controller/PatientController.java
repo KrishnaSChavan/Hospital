@@ -1,9 +1,11 @@
 package com.hms.hospital.controller;
 
 import com.hms.hospital.entity.Appointment;
+import com.hms.hospital.entity.Bill;
 import com.hms.hospital.entity.Doctor;
 import com.hms.hospital.entity.Patient;
 import com.hms.hospital.service.AppointmentService;
+import com.hms.hospital.service.BillService;
 import com.hms.hospital.service.DoctorService;
 import com.hms.hospital.service.PatientService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +33,9 @@ public class PatientController {
     @Autowired
     private AppointmentService appointmentService;
 
+    @Autowired
+    BillService billService;
+
     @GetMapping("/")
     public String patientList(Model model) {
         Patient patient = patientService.getLoggedPatient();
@@ -39,6 +44,8 @@ public class PatientController {
         model.addAttribute("doctors",doctors);
         List<Appointment> appointment = appointmentService.getAppointmentsByPatientId(patient.getPatientId());
         model.addAttribute("appointment",appointment);
+        List<Bill> bills = billService.getBillsByPatientId(patient.getPatientId());
+        model.addAttribute("bills", bills);
         return "patient/home";
     }
 

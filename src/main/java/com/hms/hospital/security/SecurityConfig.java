@@ -9,7 +9,6 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -58,7 +57,7 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/all/**", "/users/**", "/css/**", "/js/**","/appointment/**").permitAll();
+                    auth.requestMatchers("/", "/all/**", "/users/**", "/static/css/**", "/js/**","/appointment/**","/bill/**").permitAll();
                     auth.requestMatchers("/admin/**","/appointment/**").hasRole("ADMIN");
                     auth.requestMatchers("/patient/**","/appointment/**").hasRole("PATIENT");
                     auth.requestMatchers("/doctors/**","/appointment/**").hasRole("DOCTOR");

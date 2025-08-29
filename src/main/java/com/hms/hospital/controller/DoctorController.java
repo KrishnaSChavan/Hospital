@@ -1,12 +1,16 @@
 package com.hms.hospital.controller;
 
 
+import com.hms.hospital.entity.Appointment;
 import com.hms.hospital.entity.Doctor;
+import com.hms.hospital.service.AppointmentService;
 import com.hms.hospital.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/doctors")
@@ -14,10 +18,14 @@ public class DoctorController {
 
     @Autowired
     DoctorService doctorService;
+    @Autowired
+    AppointmentService appointmentService;
 
     @GetMapping("/")
     public String getDoctorList(Model model){
         Doctor doctor = doctorService.getLoggedDoctor();
+        List<Appointment> appointment = appointmentService.getAppointmentsByDoctorId(doctor.getDoctorId());
+        model.addAttribute("appointment",appointment);
         model.addAttribute("doctor",doctor);
         return "doctor/doctor-dashboard";
     }
@@ -53,6 +61,8 @@ public class DoctorController {
 
         return "doctor/doctor-dashboard";
     }
+
+
 
 
 

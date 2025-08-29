@@ -21,10 +21,12 @@
       </select>
       <div th:if="${#lists.isEmpty(availableSlots)}" class="alert alert-warning mt-3">
         No available time slots for today. Please check back later.
+        <a th:href="@{/patient/}" class="btn btn-primary">Return Back</a>
       </div>
     </div>
 
     <button type="submit" class="btn btn-primary">Confirm Appointment</button>
+    <a th:href="@{/patient/}" class="btn btn-primary">Home</a>
   </form>
 </div>
 </body>

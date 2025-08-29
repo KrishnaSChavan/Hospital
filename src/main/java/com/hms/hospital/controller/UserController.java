@@ -61,7 +61,7 @@ public class UserController {
             doctor.setUser(user);
             doctorService.saveDoctor(doctor);
         }
-        return "user-list";
+        return "login";
     }
 
 
