@@ -1,22 +1,25 @@
 package com.hms.hospital.service;
 
 
-import com.hms.hospital.entity.User;
-import com.hms.hospital.repository.UserRepository;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.hms.hospital.entity.User;
+import com.hms.hospital.repository.UserRepository;
 
 @Service
 public class UserService {
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -40,7 +43,9 @@ public class UserService {
         return authentication.getName();
     }
 
-
-
-
+    public void updatePassword(Long userId, String newPassword) {
+        User user = userRepository.findById(userId).orElseThrow();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }

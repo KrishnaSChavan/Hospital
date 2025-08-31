@@ -55,7 +55,7 @@ public class Patient {
     @JsonManagedReference
     private List<Bill> bills;
 
-    @ManyToOne
+    @ManyToOne(cascade=CascadeType.ALL)
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private User user;
 

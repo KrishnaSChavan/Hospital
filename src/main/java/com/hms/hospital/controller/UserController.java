@@ -1,5 +1,15 @@
 package com.hms.hospital.controller;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import com.hms.hospital.entity.Doctor;
 import com.hms.hospital.entity.Patient;
 import com.hms.hospital.entity.User;
@@ -8,13 +18,6 @@ import com.hms.hospital.repository.UserRepository;
 import com.hms.hospital.service.DoctorService;
 import com.hms.hospital.service.PatientService;
 import com.hms.hospital.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Controller
 @RequestMapping("/users")
@@ -22,6 +25,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private PatientService patientService;
@@ -80,7 +86,7 @@ public class UserController {
     }
 
 
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String deleteUser(@PathVariable Long id,Model model) {
         userService.deleteUser(id);
         List<User> users = userService.getAllUsers(); // Get from DB or hardcoded
@@ -88,9 +94,28 @@ public class UserController {
         return "user-list";
     }
 
+    
     public Patient getLoggedPatient(){
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
         return patientRepository.findByUser(user).orElseThrow(() -> new RuntimeException("Patient not found"));
+    }
+
+    @PostMapping("/update-password")
+    public String updatePassword(
+            @RequestParam Long userId,
+            @RequestParam String newPassword,
+            @RequestParam String confirmPassword,
+            RedirectAttributes redirectAttributes,
+            Model model) {
+
+        if (!newPassword.equals(confirmPassword)) {
+            redirectAttributes.addFlashAttribute("error", "Passwords do not match.");
+            return "redirect:/admin/edit/" + userId;
+        }
+
+        userService.updatePassword(userId, newPassword);
+        redirectAttributes.addFlashAttribute("success", "Password updated successfully.");
+        return "redirect:/users/display";
     }
 }
