@@ -1,0 +1,973 @@
+"""
+=============================================================================
+AI-DRIVEN CRYPTO TRADING BOT v3.0
+=============================================================================
+🧠 BRAIN: Claude AI (Anthropic API)
+📊 DATA:  Delta Exchange + CoinGecko + News APIs
+💹 EXEC:  Delta Exchange India API
+
+HOW IT WORKS:
+  1. Fetches real-time OHLCV data from Delta Exchange
+  2. Computes 15+ technical indicators across multiple timeframes
+  3. Fetches latest crypto news & sentiment
+  4. Feeds EVERYTHING to Claude AI for deep analysis
+  5. Claude returns a structured JSON trade decision
+  6. Bot executes the trade with proper risk management
+  7. Claude also manages open positions (trail, exit, hold)
+
+WHY AI > TRADITIONAL BOTS:
+  - Understands context (news, macro, correlations)
+  - Adapts to changing market regimes (trending vs ranging)
+  - Can reason about risk/reward like a human trader
+  - Detects complex patterns traditional indicators miss
+  - No rigid rules - intelligent decision making
+
+SETUP:
+  pip install anthropic delta-rest-client pandas numpy requests python-dotenv
+
+⚠️  DISCLAIMER: Trading involves risk. Test on testnet first.
+    AI decisions are probabilistic, not guaranteed.
+=============================================================================
+"""
+
+import os
+import json
+import time
+import hmac
+import hashlib
+import logging
+import requests
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from typing import Optional
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv("config.env")
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+@dataclass
+class Config:
+    # --- API Keys ---
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "YOUR_ANTHROPIC_KEY")
+    DELTA_API_KEY: str = os.getenv("DELTA_API_KEY", "YOUR_DELTA_KEY")
+    DELTA_API_SECRET: str = os.getenv("DELTA_API_SECRET", "YOUR_DELTA_SECRET")
+    TELEGRAM_TOKEN: str = os.getenv("TELEGRAM_TOKEN", "")
+    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+
+    # --- Endpoints ---
+    MODE: str = os.getenv("MODE", "testnet")
+
+    @property
+    def DELTA_URL(self):
+        if self.MODE == "production":
+            return "https://api.india.delta.exchange"
+        return "https://cdn-ind.testnet.deltaex.org"
+
+    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
+
+    # --- Trading Config ---
+    SYMBOLS: list = field(default_factory=lambda: ["BTCUSD", "ETHUSD"])
+    PRODUCT_IDS: dict = field(default_factory=lambda: {
+        "BTCUSD": 84,   # VERIFY on your Delta account
+        "ETHUSD": 85,   # VERIFY on your Delta account
+    })
+
+    # --- Risk ---
+    RISK_PER_TRADE: float = 0.02
+    MAX_POSITIONS: int = 3
+    DAILY_LOSS_LIMIT: float = 0.05
+    DEFAULT_LEVERAGE: int = 5
+    MAX_LEVERAGE: int = 10
+
+    # --- AI Settings ---
+    AI_CHECK_INTERVAL: int = 300       # 5 min between AI checks
+    AI_TEMPERATURE: float = 0.1        # Low temp = more consistent decisions
+    AI_MAX_TOKENS: int = 2000
+    CANDLE_LIMIT: int = 200
+
+    # --- Timeframes to analyze ---
+    TIMEFRAMES: list = field(default_factory=lambda: ["5m", "15m", "1h", "4h"])
+
+cfg = Config()
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("ai_bot.log"),
+        logging.StreamHandler()
+    ]
+)
+log = logging.getLogger("AIBot")
+
+# ============================================================================
+# TELEGRAM ALERTS
+# ============================================================================
+class TelegramAlert:
+    def __init__(self, token, chat_id):
+        self.token = token
+        self.chat_id = chat_id
+        self.enabled = bool(token and chat_id and token != "")
+        self.url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    def send(self, msg):
+        if not self.enabled:
+            return
+        try:
+            requests.post(self.url, json={
+                "chat_id": self.chat_id, "text": msg,
+                "parse_mode": "HTML"
+            }, timeout=5)
+        except:
+            pass
+
+# ============================================================================
+# TECHNICAL ANALYSIS ENGINE
+# ============================================================================
+class TAEngine:
+    """Computes all indicators and returns a structured summary for AI."""
+
+    @staticmethod
+    def compute_all(df: pd.DataFrame) -> dict:
+        """Compute all indicators and return a clean dict for Claude."""
+        if len(df) < 200:
+            return {}
+
+        c = df["close"]
+        h = df["high"]
+        l = df["low"]
+        v = df["volume"]
+        price = c.iloc[-1]
+
+        # --- EMAs ---
+        ema9 = c.ewm(span=9, adjust=False).mean()
+        ema21 = c.ewm(span=21, adjust=False).mean()
+        ema50 = c.ewm(span=50, adjust=False).mean()
+        ema200 = c.ewm(span=200, adjust=False).mean()
+
+        # --- RSI ---
+        delta = c.diff()
+        gain = delta.where(delta > 0, 0.0)
+        loss = -delta.where(delta < 0, 0.0)
+        avg_gain = gain.ewm(alpha=1/14, min_periods=14).mean()
+        avg_loss = loss.ewm(alpha=1/14, min_periods=14).mean()
+        rs = avg_gain / avg_loss
+        rsi_vals = 100 - (100 / (1 + rs))
+
+        # --- MACD ---
+        ema12 = c.ewm(span=12, adjust=False).mean()
+        ema26 = c.ewm(span=26, adjust=False).mean()
+        macd_line = ema12 - ema26
+        macd_signal = macd_line.ewm(span=9, adjust=False).mean()
+        macd_hist = macd_line - macd_signal
+
+        # --- Bollinger Bands ---
+        bb_mid = c.rolling(20).mean()
+        bb_std = c.rolling(20).std()
+        bb_upper = bb_mid + 2 * bb_std
+        bb_lower = bb_mid - 2 * bb_std
+        bb_width = ((bb_upper - bb_lower) / bb_mid * 100)
+
+        # --- ATR ---
+        tr = pd.concat([
+            h - l,
+            (h - c.shift()).abs(),
+            (l - c.shift()).abs()
+        ], axis=1).max(axis=1)
+        atr_val = tr.rolling(14).mean()
+
+        # --- Stochastic RSI ---
+        rsi_14 = rsi_vals
+        min_rsi = rsi_14.rolling(14).min()
+        max_rsi = rsi_14.rolling(14).max()
+        stoch_rsi = ((rsi_14 - min_rsi) / (max_rsi - min_rsi)) * 100
+        stoch_k = stoch_rsi.rolling(3).mean()
+        stoch_d = stoch_k.rolling(3).mean()
+
+        # --- ADX ---
+        plus_dm = h.diff()
+        minus_dm = -l.diff()
+        plus_dm[plus_dm < 0] = 0
+        minus_dm[minus_dm < 0] = 0
+        atr14 = tr.rolling(14).mean()
+        plus_di = 100 * (plus_dm.rolling(14).mean() / atr14)
+        minus_di = 100 * (minus_dm.rolling(14).mean() / atr14)
+        dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
+        adx = dx.rolling(14).mean()
+
+        # --- Volume Analysis ---
+        vol_sma = v.rolling(20).mean()
+        vol_ratio = v.iloc[-1] / vol_sma.iloc[-1] if vol_sma.iloc[-1] > 0 else 1
+
+        # --- VWAP ---
+        typical_price = (h + l + c) / 3
+        vwap = (typical_price * v).cumsum() / v.cumsum()
+
+        # --- Support/Resistance (pivot points) ---
+        recent_highs = h.rolling(20).max()
+        recent_lows = l.rolling(20).min()
+
+        # --- Price action patterns ---
+        candle_body = abs(c - df["open"])
+        candle_range = h - l
+        body_ratio = (candle_body / candle_range).replace([np.inf, -np.inf], 0)
+
+        # Last 5 candles summary
+        last5 = []
+        for i in range(-5, 0):
+            row = df.iloc[i]
+            last5.append({
+                "open": round(row["open"], 2),
+                "high": round(row["high"], 2),
+                "low": round(row["low"], 2),
+                "close": round(row["close"], 2),
+                "volume": round(row["volume"], 2),
+                "bullish": row["close"] > row["open"]
+            })
+
+        # --- Price change stats ---
+        pct_1h = ((price - c.iloc[-13]) / c.iloc[-13] * 100) if len(c) > 13 else 0
+        pct_4h = ((price - c.iloc[-49]) / c.iloc[-49] * 100) if len(c) > 49 else 0
+        pct_24h = ((price - c.iloc[-97]) / c.iloc[-97] * 100) if len(c) > 97 else 0
+
+        return {
+            "price": round(price, 2),
+            "price_changes": {
+                "1h_pct": round(pct_1h, 2),
+                "4h_pct": round(pct_4h, 2),
+                "24h_pct": round(pct_24h, 2),
+            },
+            "ema": {
+                "ema9": round(ema9.iloc[-1], 2),
+                "ema21": round(ema21.iloc[-1], 2),
+                "ema50": round(ema50.iloc[-1], 2),
+                "ema200": round(ema200.iloc[-1], 2),
+                "alignment": "bullish" if ema9.iloc[-1] > ema21.iloc[-1] > ema50.iloc[-1] else
+                             "bearish" if ema9.iloc[-1] < ema21.iloc[-1] < ema50.iloc[-1] else "mixed",
+                "price_vs_200ema": "above" if price > ema200.iloc[-1] else "below",
+            },
+            "rsi": {
+                "value": round(rsi_vals.iloc[-1], 1),
+                "prev": round(rsi_vals.iloc[-2], 1),
+                "trend": "rising" if rsi_vals.iloc[-1] > rsi_vals.iloc[-3] else "falling",
+                "zone": "oversold" if rsi_vals.iloc[-1] < 30 else "overbought" if rsi_vals.iloc[-1] > 70 else "neutral",
+            },
+            "macd": {
+                "line": round(macd_line.iloc[-1], 2),
+                "signal": round(macd_signal.iloc[-1], 2),
+                "histogram": round(macd_hist.iloc[-1], 2),
+                "hist_prev": round(macd_hist.iloc[-2], 2),
+                "crossover": "bullish" if macd_line.iloc[-1] > macd_signal.iloc[-1] and macd_line.iloc[-2] <= macd_signal.iloc[-2] else
+                             "bearish" if macd_line.iloc[-1] < macd_signal.iloc[-1] and macd_line.iloc[-2] >= macd_signal.iloc[-2] else "none",
+                "momentum": "increasing" if abs(macd_hist.iloc[-1]) > abs(macd_hist.iloc[-2]) else "decreasing",
+            },
+            "bollinger": {
+                "upper": round(bb_upper.iloc[-1], 2),
+                "mid": round(bb_mid.iloc[-1], 2),
+                "lower": round(bb_lower.iloc[-1], 2),
+                "width_pct": round(bb_width.iloc[-1], 2),
+                "position": "above_upper" if price > bb_upper.iloc[-1] else
+                            "below_lower" if price < bb_lower.iloc[-1] else
+                            "upper_half" if price > bb_mid.iloc[-1] else "lower_half",
+                "squeeze": bb_width.iloc[-1] < bb_width.iloc[-10] * 0.7 if len(bb_width) > 10 else False,
+            },
+            "atr": {
+                "value": round(atr_val.iloc[-1], 2),
+                "pct_of_price": round(atr_val.iloc[-1] / price * 100, 2),
+            },
+            "stochastic_rsi": {
+                "k": round(stoch_k.iloc[-1], 1) if not pd.isna(stoch_k.iloc[-1]) else 50,
+                "d": round(stoch_d.iloc[-1], 1) if not pd.isna(stoch_d.iloc[-1]) else 50,
+                "zone": "oversold" if stoch_k.iloc[-1] < 20 else "overbought" if stoch_k.iloc[-1] > 80 else "neutral",
+            },
+            "adx": {
+                "value": round(adx.iloc[-1], 1) if not pd.isna(adx.iloc[-1]) else 0,
+                "trend_strength": "strong" if adx.iloc[-1] > 25 else "weak" if adx.iloc[-1] < 20 else "moderate",
+                "plus_di": round(plus_di.iloc[-1], 1),
+                "minus_di": round(minus_di.iloc[-1], 1),
+            },
+            "volume": {
+                "current": round(v.iloc[-1], 2),
+                "sma20": round(vol_sma.iloc[-1], 2),
+                "ratio": round(vol_ratio, 2),
+                "surge": vol_ratio > 1.5,
+            },
+            "vwap": round(vwap.iloc[-1], 2),
+            "support_resistance": {
+                "nearest_resistance": round(recent_highs.iloc[-1], 2),
+                "nearest_support": round(recent_lows.iloc[-1], 2),
+            },
+            "last_5_candles": last5,
+        }
+
+
+# ============================================================================
+# NEWS & SENTIMENT FETCHER
+# ============================================================================
+class NewsFetcher:
+    """Fetches latest crypto news from free APIs."""
+
+    @staticmethod
+    def get_crypto_fear_greed() -> dict:
+        try:
+            r = requests.get("https://api.alternative.me/fng/?limit=1", timeout=5)
+            data = r.json()["data"][0]
+            return {
+                "value": int(data["value"]),
+                "label": data["value_classification"],
+            }
+        except:
+            return {"value": 50, "label": "Neutral"}
+
+    @staticmethod
+    def get_coingecko_data(coin_id: str) -> dict:
+        try:
+            r = requests.get(
+                f"https://api.coingecko.com/api/v3/coins/{coin_id}",
+                params={"localization": "false", "tickers": "false",
+                         "community_data": "false", "developer_data": "false"},
+                timeout=10
+            )
+            data = r.json()
+            md = data.get("market_data", {})
+            return {
+                "market_cap_rank": data.get("market_cap_rank"),
+                "price_change_24h_pct": round(md.get("price_change_percentage_24h", 0), 2),
+                "price_change_7d_pct": round(md.get("price_change_percentage_7d", 0), 2),
+                "price_change_30d_pct": round(md.get("price_change_percentage_30d", 0), 2),
+                "market_cap_usd": md.get("market_cap", {}).get("usd", 0),
+                "total_volume_24h": md.get("total_volume", {}).get("usd", 0),
+                "ath": md.get("ath", {}).get("usd", 0),
+                "ath_change_pct": round(md.get("ath_change_percentage", {}).get("usd", 0), 1),
+                "high_24h": md.get("high_24h", {}).get("usd", 0),
+                "low_24h": md.get("low_24h", {}).get("usd", 0),
+            }
+        except Exception as e:
+            log.warning(f"CoinGecko error: {e}")
+            return {}
+
+    @staticmethod
+    def get_news_headlines() -> list:
+        """Fetch recent crypto news from CryptoPanic (free tier)."""
+        try:
+            r = requests.get(
+                "https://cryptopanic.com/api/free/v1/posts/",
+                params={"auth_token": "free", "public": "true",
+                         "kind": "news", "filter": "hot"},
+                timeout=10
+            )
+            posts = r.json().get("results", [])[:10]
+            return [{"title": p["title"], "source": p.get("source", {}).get("title", ""),
+                     "created": p.get("created_at", "")} for p in posts]
+        except:
+            return []
+
+    @staticmethod
+    def get_btc_dominance() -> float:
+        try:
+            r = requests.get("https://api.coingecko.com/api/v3/global", timeout=5)
+            return round(r.json()["data"]["market_cap_percentage"]["btc"], 1)
+        except:
+            return 0
+
+
+# ============================================================================
+# DELTA EXCHANGE CLIENT
+# ============================================================================
+class DeltaClient:
+    def __init__(self, api_key, api_secret, base_url):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.base_url = base_url
+
+    def _sign(self, method, path, body=""):
+        ts = str(int(time.time()))
+        msg = method + ts + path + body
+        sig = hmac.new(self.api_secret.encode(), msg.encode(), hashlib.sha256).hexdigest()
+        return {"api-key": self.api_key, "timestamp": ts, "signature": sig,
+                "Content-Type": "application/json", "User-Agent": "AIBot/3.0"}
+
+    def _get(self, path, params=None):
+        r = requests.get(self.base_url + path, headers=self._sign("GET", path),
+                         params=params, timeout=10)
+        return r.json()
+
+    def _post(self, path, body):
+        body_str = json.dumps(body)
+        r = requests.post(self.base_url + path, headers=self._sign("POST", path, body_str),
+                          data=body_str, timeout=10)
+        return r.json()
+
+    def _delete(self, path, body=None):
+        body_str = json.dumps(body) if body else ""
+        r = requests.delete(self.base_url + path, headers=self._sign("DELETE", path, body_str),
+                            data=body_str, timeout=10)
+        return r.json()
+
+    def get_candles(self, symbol, resolution, limit=200):
+        end = int(time.time())
+        tf_map = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
+        start = end - (tf_map.get(resolution, 900) * limit)
+        resp = self._get("/v2/history/candles", {
+            "symbol": symbol, "resolution": resolution, "start": start, "end": end
+        })
+        if not resp.get("success"):
+            return pd.DataFrame()
+        df = pd.DataFrame(resp["result"], columns=["time","open","high","low","close","volume"])
+        for col in ["open","high","low","close","volume"]:
+            df[col] = df[col].astype(float)
+        df["time"] = pd.to_datetime(df["time"], unit="s")
+        return df.sort_values("time").reset_index(drop=True)
+
+    def get_ticker(self, symbol):
+        return self._get(f"/v2/tickers/{symbol}").get("result", {})
+
+    def get_wallet(self):
+        return self._get("/v2/wallet/balances").get("result", {})
+
+    def get_positions(self):
+        return self._get("/v2/positions").get("result", [])
+
+    def place_order(self, product_id, size, side, order_type="market_order", limit_price=None):
+        body = {"product_id": product_id, "size": size, "side": side, "order_type": order_type}
+        if limit_price:
+            body["limit_price"] = str(limit_price)
+        return self._post("/v2/orders", body)
+
+    def place_bracket_order(self, product_id, size, side, sl, tp):
+        body = {
+            "product_id": product_id, "size": size, "side": side,
+            "order_type": "market_order",
+            "bracket_stop_loss_price": str(sl),
+            "bracket_stop_loss_limit_price": str(sl),
+            "bracket_take_profit_price": str(tp),
+            "bracket_take_profit_limit_price": str(tp),
+        }
+        return self._post("/v2/orders", body)
+
+    def set_leverage(self, product_id, leverage):
+        return self._post("/v2/orders/leverage", {"product_id": product_id, "leverage": str(leverage)})
+
+    def cancel_all_orders(self, product_id):
+        return self._delete("/v2/orders/all", {"product_id": product_id})
+
+    def close_position(self, product_id, size, side):
+        """Close position by placing opposite market order."""
+        close_side = "sell" if side == "buy" else "buy"
+        return self.place_order(product_id, size, close_side)
+
+
+# ============================================================================
+# 🧠 AI BRAIN - Claude Trading Intelligence
+# ============================================================================
+class AIBrain:
+    """
+    The core AI engine. Sends market data to Claude and gets
+    structured trading decisions back.
+    """
+
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model
+        self.api_url = "https://api.anthropic.com/v1/messages"
+        self.conversation_history = []  # Track recent decisions for context
+
+    def _call_claude(self, system_prompt: str, user_message: str) -> str:
+        """Call Claude API and return response text."""
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+        body = {
+            "model": self.model,
+            "max_tokens": cfg.AI_MAX_TOKENS,
+            "temperature": cfg.AI_TEMPERATURE,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_message}]
+        }
+
+        try:
+            r = requests.post(self.api_url, headers=headers, json=body, timeout=60)
+            data = r.json()
+            if "content" in data:
+                return data["content"][0]["text"]
+            else:
+                log.error(f"Claude API error: {data}")
+                return ""
+        except Exception as e:
+            log.error(f"Claude API call failed: {e}")
+            return ""
+
+    def analyze_market(self, symbol: str, ta_data: dict,
+                       market_context: dict, open_positions: list,
+                       account_balance: float) -> dict:
+        """
+        Send all market data to Claude and get a trade decision.
+        Returns structured JSON with action, direction, SL, TP, reasoning.
+        """
+
+        system_prompt = """You are an elite crypto derivatives trader and quantitative analyst 
+with 15+ years of experience. You manage a systematic trading fund.
+
+YOUR ROLE:
+- Analyze ALL provided technical indicators, market data, and news
+- Make a single clear trading decision: BUY, SELL, or HOLD
+- If there's an open position, decide: HOLD, ADD, REDUCE, CLOSE, or ADJUST_SL
+- Always think in terms of risk/reward ratio (minimum 1:1.5)
+- Be conservative - only trade when you have high conviction
+- Factor in market regime (trending vs ranging), volatility, and macro
+
+CRITICAL RULES:
+- NEVER chase a move that's already extended
+- Respect support/resistance levels
+- Higher timeframe trend takes priority
+- Wait for confirmation before entering
+- If indicators conflict, stay out (HOLD)
+- Size positions based on volatility (ATR)
+- Account for current market fear/greed
+- Consider correlations (BTC leads, alts follow)
+
+You MUST respond with ONLY valid JSON in this exact format, no other text:
+{
+    "action": "BUY" | "SELL" | "HOLD" | "CLOSE" | "ADJUST_SL",
+    "confidence": 1-10,
+    "entry_price": float or null,
+    "stop_loss": float or null,
+    "take_profit": float or null,
+    "position_size_pct": float (0.5 to 2.0, percentage of account to risk),
+    "leverage": int (1 to 10),
+    "reasoning": "Brief explanation of the trade thesis",
+    "key_levels": {"support": float, "resistance": float},
+    "risk_reward_ratio": float,
+    "market_regime": "trending_up" | "trending_down" | "ranging" | "volatile",
+    "time_horizon": "scalp" | "intraday" | "swing",
+    "invalidation": "What would make this trade wrong",
+    "trail_stop_after": float or null (price at which to start trailing)
+}"""
+
+        # Build comprehensive market briefing for Claude
+        user_message = f"""
+=== MARKET ANALYSIS REQUEST: {symbol} ===
+Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+
+=== ACCOUNT STATUS ===
+Balance: ${account_balance:.2f}
+Open Positions: {json.dumps(open_positions, indent=2) if open_positions else "None"}
+Risk per trade: {cfg.RISK_PER_TRADE*100}% = ${account_balance * cfg.RISK_PER_TRADE:.2f}
+
+=== MULTI-TIMEFRAME TECHNICAL ANALYSIS ===
+{json.dumps(ta_data, indent=2)}
+
+=== MARKET CONTEXT ===
+{json.dumps(market_context, indent=2)}
+
+=== RECENT AI DECISIONS (for consistency) ===
+{json.dumps(self.conversation_history[-5:], indent=2) if self.conversation_history else "No recent decisions"}
+
+Based on ALL the above data, what is your trading decision for {symbol}?
+Remember: respond with ONLY valid JSON, no markdown, no explanation outside JSON.
+"""
+
+        response = self._call_claude(system_prompt, user_message)
+        if not response:
+            return {"action": "HOLD", "confidence": 0, "reasoning": "AI API call failed"}
+
+        # Parse JSON response
+        try:
+            # Clean response (remove markdown if any)
+            cleaned = response.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            cleaned = cleaned.strip()
+
+            decision = json.loads(cleaned)
+
+            # Store in history
+            self.conversation_history.append({
+                "time": datetime.utcnow().isoformat(),
+                "symbol": symbol,
+                "action": decision.get("action"),
+                "confidence": decision.get("confidence"),
+                "price": ta_data.get("15m", {}).get("price", 0),
+            })
+            # Keep last 20 decisions
+            self.conversation_history = self.conversation_history[-20:]
+
+            return decision
+
+        except json.JSONDecodeError as e:
+            log.error(f"Failed to parse AI response: {e}\nResponse: {response[:500]}")
+            return {"action": "HOLD", "confidence": 0, "reasoning": f"JSON parse error: {str(e)}"}
+
+    def analyze_portfolio(self, positions: list, ta_data_all: dict,
+                          account_balance: float) -> list:
+        """
+        AI reviews all open positions and decides what to do with each.
+        """
+        if not positions:
+            return []
+
+        system_prompt = """You are a crypto portfolio risk manager.
+Review each open position against current market data.
+For EACH position, decide: HOLD, CLOSE, or ADJUST_SL (with new SL price).
+
+Respond with ONLY a JSON array:
+[
+    {
+        "symbol": "BTCUSD",
+        "action": "HOLD" | "CLOSE" | "ADJUST_SL",
+        "new_stop_loss": float or null,
+        "reasoning": "brief reason"
+    }
+]"""
+
+        user_message = f"""
+Account Balance: ${account_balance:.2f}
+
+Open Positions:
+{json.dumps(positions, indent=2)}
+
+Current Market Data:
+{json.dumps(ta_data_all, indent=2)}
+
+Review each position and decide what to do. Respond with ONLY JSON array.
+"""
+        response = self._call_claude(system_prompt, user_message)
+        try:
+            cleaned = response.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            return json.loads(cleaned.strip())
+        except:
+            return []
+
+
+# ============================================================================
+# MAIN AI TRADING BOT
+# ============================================================================
+class AITradingBot:
+    def __init__(self):
+        self.cfg = cfg
+        self.client = DeltaClient(cfg.DELTA_API_KEY, cfg.DELTA_API_SECRET, cfg.DELTA_URL)
+        self.ai = AIBrain(cfg.ANTHROPIC_API_KEY, cfg.CLAUDE_MODEL)
+        self.ta = TAEngine()
+        self.news = NewsFetcher()
+        self.telegram = TelegramAlert(cfg.TELEGRAM_TOKEN, cfg.TELEGRAM_CHAT_ID)
+        self.positions = {}
+        self.daily_pnl = 0.0
+        self.daily_trades = 0
+        self.last_daily_reset = datetime.utcnow().date()
+
+    def get_balance(self) -> float:
+        try:
+            wallet = self.client.get_wallet()
+            if isinstance(wallet, list):
+                for a in wallet:
+                    if a.get("asset_symbol") in ["USDT", "USD"]:
+                        return float(a.get("available_balance", 0))
+            return 0.0
+        except Exception as e:
+            log.error(f"Balance error: {e}")
+            return 0.0
+
+    def sync_positions(self):
+        try:
+            raw = self.client.get_positions()
+            active = {}
+            for p in raw:
+                sym = p.get("product_symbol", "")
+                size = int(p.get("size", 0))
+                if size != 0 and sym in self.cfg.PRODUCT_IDS:
+                    active[sym] = {
+                        "symbol": sym,
+                        "side": "buy" if size > 0 else "sell",
+                        "size": abs(size),
+                        "entry_price": float(p.get("entry_price", 0)),
+                        "unrealized_pnl": float(p.get("unrealized_pnl", 0)),
+                        "margin": float(p.get("margin", 0)),
+                    }
+            self.positions = active
+        except Exception as e:
+            log.error(f"Position sync error: {e}")
+
+    def gather_market_data(self, symbol: str) -> dict:
+        """Fetch data across all timeframes + compute indicators."""
+        ta_data = {}
+        for tf in self.cfg.TIMEFRAMES:
+            df = self.client.get_candles(symbol, tf, self.cfg.CANDLE_LIMIT)
+            if not df.empty and len(df) >= 200:
+                ta_data[tf] = self.ta.compute_all(df)
+            elif not df.empty:
+                ta_data[tf] = {
+                    "price": round(df["close"].iloc[-1], 2),
+                    "note": f"Only {len(df)} candles available"
+                }
+            time.sleep(0.2)  # Rate limit
+        return ta_data
+
+    def gather_market_context(self) -> dict:
+        """Fetch macro/sentiment data."""
+        context = {}
+
+        # Fear & Greed
+        context["fear_greed"] = self.news.get_crypto_fear_greed()
+
+        # BTC dominance
+        context["btc_dominance"] = self.news.get_btc_dominance()
+
+        # CoinGecko data
+        coin_map = {"BTCUSD": "bitcoin", "ETHUSD": "ethereum"}
+        for sym in self.cfg.SYMBOLS:
+            cg_id = coin_map.get(sym)
+            if cg_id:
+                cg_data = self.news.get_coingecko_data(cg_id)
+                if cg_data:
+                    context[f"{sym}_market"] = cg_data
+                time.sleep(0.5)  # CoinGecko rate limit
+
+        # News headlines
+        context["news_headlines"] = self.news.get_news_headlines()
+
+        return context
+
+    def execute_ai_decision(self, symbol: str, decision: dict):
+        """Execute the AI's trading decision."""
+        action = decision.get("action", "HOLD").upper()
+        confidence = decision.get("confidence", 0)
+
+        log.info(f"""
+🧠 AI DECISION for {symbol}:
+   Action:     {action}
+   Confidence: {confidence}/10
+   Reasoning:  {decision.get('reasoning', 'N/A')}
+   Regime:     {decision.get('market_regime', 'N/A')}
+   R:R Ratio:  {decision.get('risk_reward_ratio', 'N/A')}
+        """)
+
+        # Only execute with confidence >= 7
+        if confidence < 7:
+            log.info(f"Confidence {confidence}/10 too low. Waiting for better setup.")
+            return
+
+        if action in ["BUY", "SELL"]:
+            # Check if already in position
+            if symbol in self.positions:
+                log.info(f"Already in {symbol} position. Skipping.")
+                return
+
+            if len(self.positions) >= self.cfg.MAX_POSITIONS:
+                log.info("Max positions reached.")
+                return
+
+            balance = self.get_balance()
+            if balance <= 0:
+                return
+
+            # Check daily loss limit
+            if self.daily_pnl < -(balance * self.cfg.DAILY_LOSS_LIMIT):
+                log.warning("Daily loss limit hit!")
+                return
+
+            entry = decision.get("entry_price")
+            sl = decision.get("stop_loss")
+            tp = decision.get("take_profit")
+            leverage = min(decision.get("leverage", self.cfg.DEFAULT_LEVERAGE), self.cfg.MAX_LEVERAGE)
+            risk_pct = min(decision.get("position_size_pct", self.cfg.RISK_PER_TRADE * 100), 2.0) / 100
+
+            if not all([entry, sl, tp]):
+                log.warning("AI didn't provide entry/SL/TP. Skipping.")
+                return
+
+            # Calculate position size
+            risk_amount = balance * risk_pct
+            sl_distance = abs(entry - sl)
+            if sl_distance == 0:
+                return
+            size = int((risk_amount * leverage) / sl_distance)
+            size = max(1, size)
+
+            product_id = self.cfg.PRODUCT_IDS.get(symbol)
+            if not product_id:
+                return
+
+            side = "buy" if action == "BUY" else "sell"
+
+            try:
+                # Set leverage
+                self.client.set_leverage(product_id, leverage)
+
+                # Place bracket order
+                resp = self.client.place_bracket_order(
+                    product_id, size, side, round(sl, 2), round(tp, 2)
+                )
+
+                if resp.get("success"):
+                    self.daily_trades += 1
+                    msg = (
+                        f"🤖 AI TRADE EXECUTED\n"
+                        f"━━━━━━━━━━━━━━━━━━\n"
+                        f"Symbol: {symbol}\n"
+                        f"Action: {action}\n"
+                        f"Entry: ${entry}\n"
+                        f"SL: ${sl} | TP: ${tp}\n"
+                        f"Size: {size} contracts\n"
+                        f"Leverage: {leverage}x\n"
+                        f"Confidence: {confidence}/10\n"
+                        f"R:R: {decision.get('risk_reward_ratio', 'N/A')}\n"
+                        f"Regime: {decision.get('market_regime', 'N/A')}\n"
+                        f"Reason: {decision.get('reasoning', 'N/A')}"
+                    )
+                    log.info(msg)
+                    self.telegram.send(msg)
+                else:
+                    log.error(f"Order failed: {resp}")
+                    self.telegram.send(f"⚠️ Order failed for {symbol}: {resp}")
+
+            except Exception as e:
+                log.error(f"Execution error: {e}")
+
+        elif action == "CLOSE" and symbol in self.positions:
+            pos = self.positions[symbol]
+            product_id = self.cfg.PRODUCT_IDS.get(symbol)
+            try:
+                resp = self.client.close_position(product_id, pos["size"], pos["side"])
+                log.info(f"🔴 Position closed: {symbol} | {decision.get('reasoning')}")
+                self.telegram.send(f"🔴 CLOSED {symbol}: {decision.get('reasoning')}")
+            except Exception as e:
+                log.error(f"Close error: {e}")
+
+        elif action == "ADJUST_SL" and symbol in self.positions:
+            new_sl = decision.get("stop_loss")
+            if new_sl:
+                log.info(f"📏 SL adjusted for {symbol} to ${new_sl}")
+                # Cancel existing SL and place new one
+                product_id = self.cfg.PRODUCT_IDS.get(symbol)
+                pos = self.positions[symbol]
+                close_side = "sell" if pos["side"] == "buy" else "buy"
+                try:
+                    self.client.cancel_all_orders(product_id)
+                    self.client._post("/v2/orders", {
+                        "product_id": product_id, "size": pos["size"],
+                        "side": close_side, "order_type": "market_order",
+                        "stop_price": str(round(new_sl, 2)),
+                        "stop_order_type": "stop_loss_order"
+                    })
+                except Exception as e:
+                    log.error(f"SL adjustment error: {e}")
+
+    def run_cycle(self):
+        """Single AI analysis + execution cycle."""
+        # Reset daily counters
+        today = datetime.utcnow().date()
+        if today != self.last_daily_reset:
+            self.daily_pnl = 0.0
+            self.daily_trades = 0
+            self.last_daily_reset = today
+            self.telegram.send(f"📅 New trading day: {today}")
+
+        log.info("\n" + "=" * 60)
+        log.info(f"🧠 AI ANALYSIS CYCLE - {datetime.utcnow().strftime('%H:%M:%S UTC')}")
+        log.info("=" * 60)
+
+        # Sync positions
+        self.sync_positions()
+        balance = self.get_balance()
+        log.info(f"💰 Balance: ${balance:.2f} | Positions: {len(self.positions)} | Daily PnL: ${self.daily_pnl:.2f}")
+
+        # Gather market context (shared across symbols)
+        log.info("📰 Fetching market context...")
+        market_context = self.gather_market_context()
+        log.info(f"   Fear/Greed: {market_context.get('fear_greed', {}).get('value', '?')}")
+
+        # Analyze each symbol
+        for symbol in self.cfg.SYMBOLS:
+            log.info(f"\n📊 Analyzing {symbol}...")
+
+            # Gather multi-timeframe TA data
+            ta_data = self.gather_market_data(symbol)
+            if not ta_data:
+                log.warning(f"No data for {symbol}")
+                continue
+
+            # Get open positions for this symbol
+            open_pos = [self.positions[symbol]] if symbol in self.positions else []
+
+            # 🧠 ASK CLAUDE
+            log.info(f"🧠 Sending {symbol} data to Claude AI...")
+            decision = self.ai.analyze_market(
+                symbol=symbol,
+                ta_data=ta_data,
+                market_context=market_context,
+                open_positions=open_pos,
+                account_balance=balance
+            )
+
+            # Execute decision
+            self.execute_ai_decision(symbol, decision)
+
+            time.sleep(1)  # Small delay between symbols
+
+        # Portfolio review (if positions exist)
+        if self.positions:
+            log.info("\n📋 AI Portfolio Review...")
+            all_ta = {}
+            for sym in self.positions:
+                all_ta[sym] = self.gather_market_data(sym)
+            reviews = self.ai.analyze_portfolio(
+                list(self.positions.values()), all_ta, balance
+            )
+            for review in reviews:
+                sym = review.get("symbol")
+                if sym and review.get("action") in ["CLOSE", "ADJUST_SL"]:
+                    self.execute_ai_decision(sym, review)
+
+    def run(self):
+        """Main loop."""
+        log.info("""
+╔══════════════════════════════════════════════════════════╗
+║         🧠 AI CRYPTO TRADING BOT v3.0                    ║
+║         Brain: Claude AI (Anthropic)                     ║
+║         Exchange: Delta Exchange India                   ║
+║         Mode: """ + f"{self.cfg.MODE:<40}" + """║
+║         Symbols: BTC/USD, ETH/USD                        ║
+╚══════════════════════════════════════════════════════════╝
+        """)
+        self.telegram.send("🤖 AI Trading Bot STARTED\n"
+                          f"Mode: {self.cfg.MODE}\n"
+                          f"Symbols: {', '.join(self.cfg.SYMBOLS)}")
+
+        while True:
+            try:
+                self.run_cycle()
+                log.info(f"\n💤 Next AI analysis in {self.cfg.AI_CHECK_INTERVAL}s...")
+                time.sleep(self.cfg.AI_CHECK_INTERVAL)
+
+            except KeyboardInterrupt:
+                log.info("🛑 Bot stopped by user.")
+                self.telegram.send("🛑 AI Trading Bot STOPPED by user")
+                break
+            except Exception as e:
+                log.error(f"Unexpected error: {e}")
+                self.telegram.send(f"⚠️ Bot error: {e}")
+                time.sleep(60)
+
+
+# ============================================================================
+# ENTRY POINT
+# ============================================================================
+if __name__ == "__main__":
+    bot = AITradingBot()
+    bot.run()
